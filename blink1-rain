@@ -1,0 +1,92 @@
+#!/bin/sh
+
+set -e
+
+# config
+region=Moscow,ru
+units=metric  # internal, metric, imperial
+sleep_time=22:00
+wake_up_time=06:00
+# end config
+
+prog=$(basename "$0")
+# http://openweathermap.org/forecast
+url="http://api.openweathermap.org/data/2.5/forecast/daily?q=${region}&mode=json&units=${units}&cnt=1"
+state_file=/tmp/.blink1-weather.state
+
+if [ "$(date +%H%M)" -lt "$(echo "$wake_up_time" | tr -d :)" ]; then
+    blink1-tool --off >/dev/null
+    exit 0
+fi
+
+if [ "$(date +%H%M)" -ge "$(echo "$sleep_time" | tr -d :)" ]; then
+    blink1-tool --off >/dev/null
+    exit 0
+fi
+
+id=$(wget -q -O - "$url" | jq '.list[0].weather[0].id')
+
+mode=off
+rgb=0,0,0
+fading=300
+delay=500
+
+# http://openweathermap.org/weather-conditions
+case $id in
+    2??)  # thunderstorm
+        mode=blink
+        rgb=192,0,192
+    ;;
+    3??)  # drizzle
+        mode=on
+        rgb=0,0,128
+    ;;
+    5??)  # rain
+        mode=blink
+        rgb=0,0,192
+        fading=500
+        delay=2000
+    ;;
+    6??)  # snow
+    ;;
+    7??)  # atmosphere
+    ;;
+    8??)  # clouds
+    ;;
+    90?)  # extreme
+        mode=blink
+        rgb=255,0,0
+    ;;
+    950|951|952|953|954|955|956)  # additional, setting - strong breeze
+    ;;
+    957|958|959|960|961|962)  # additional, high wind - hurricane
+        mode=blink
+        rgb=255,0,0
+    ;;
+    *)
+        echo "$prog: unknown weather id: $id" >&2
+        exit 1
+    ;;
+esac
+
+if [ -r "$state_file" ]; then
+    test "$(cat "$state_file")" = "$id" && exit 0
+fi
+
+echo "$id" >"$state_file"
+
+case $mode in
+  blink)
+        blink1-tool --rgb "$rgb" --millis "$fading"             --setpattline 0 >/dev/null
+        blink1-tool --rgb "$rgb" --millis "$((delay - fading))" --setpattline 1 >/dev/null
+        blink1-tool --rgb 0,0,0  --millis "$fading"             --setpattline 2 >/dev/null
+        blink1-tool --rgb 0,0,0  --millis "$((delay - fading))" --setpattline 3 >/dev/null
+        blink1-tool --play 1,0,3,0 >/dev/null
+    ;;
+    on)
+        blink1-tool --rgb "$rgb" >/dev/null
+    ;;
+    *)
+        blink1-tool --off >/dev/null
+    ;;
+esac
