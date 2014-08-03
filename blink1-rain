@@ -12,7 +12,7 @@ wake_up_time=06:00
 prog=$(basename "$0")
 # http://openweathermap.org/forecast
 url="http://api.openweathermap.org/data/2.5/forecast/daily?q=${region}&mode=json&units=${units}&cnt=1"
-state_file=/tmp/.blink1-weather.state
+last_id_file=/tmp/blink1-rain.last-id
 
 if [ "$(date +%H%M)" -lt "$(echo "$wake_up_time" | tr -d :)" ]; then
     blink1-tool --off >/dev/null
@@ -69,11 +69,11 @@ case $id in
     ;;
 esac
 
-if [ -r "$state_file" ]; then
-    test "$(cat "$state_file")" = "$id" && exit 0
+if [ -r "$last_id_file" ]; then
+    test "$(cat "$last_id_file")" = "$id" && exit 0
 fi
 
-echo "$id" >"$state_file"
+echo "$id" >"$last_id_file"
 
 case $mode in
   blink)
