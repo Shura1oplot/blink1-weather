@@ -1,12 +1,11 @@
 #!/bin/sh
 
-set -e
-
 # config
 region=Moscow,ru
 units=metric  # internal, metric, imperial
 sleep_time=22:00
 wake_up_time=06:00
+blink1_tool_args=
 # end config
 
 prog=$(basename "$0")
@@ -14,17 +13,25 @@ prog=$(basename "$0")
 url="http://api.openweathermap.org/data/2.5/forecast/daily?q=${region}&mode=json&units=${units}&cnt=1"
 last_id_file=/tmp/blink1-rain.last-id
 
-if [ "$(date +%H%M)" -lt "$(echo "$wake_up_time" | tr -d :)" ]; then
-    blink1-tool --off >/dev/null
-    exit 0
-fi
+blink1_tool() {
+    blink1-tool $blink1_tool_args "$@" >/dev/null
+}
 
-if [ "$(date +%H%M)" -ge "$(echo "$sleep_time" | tr -d :)" ]; then
-    blink1-tool --off >/dev/null
-    exit 0
-fi
+die() {
+    blink1_tool --off
+    rm -f "$last_id_file"
+    exit "$1"
+}
+
+test "$(date +%H%M)" -lt "$(echo "$wake_up_time" | tr -d :)" && die 0
+test "$(date +%H%M)" -ge "$(echo "$sleep_time" | tr -d :)" && die 0
 
 id=$(wget -q -O - "$url" | jq '.list[0].weather[0].id')
+
+if [ -z "$id" ]; then
+    echo "$prog: cannot get weather id" >&2
+    die 1
+fi
 
 mode=off
 rgb=0,0,0
@@ -65,7 +72,7 @@ case $id in
     ;;
     *)
         echo "$prog: unknown weather id: $id" >&2
-        exit 1
+        die 1
     ;;
 esac
 
@@ -74,19 +81,20 @@ if [ -r "$last_id_file" ]; then
 fi
 
 echo "$id" >"$last_id_file"
+chmod 0666 "$last_id_file"
 
 case $mode in
   blink)
-        blink1-tool --rgb "$rgb" --millis "$fading"             --setpattline 0 >/dev/null
-        blink1-tool --rgb "$rgb" --millis "$((delay - fading))" --setpattline 1 >/dev/null
-        blink1-tool --rgb 0,0,0  --millis "$fading"             --setpattline 2 >/dev/null
-        blink1-tool --rgb 0,0,0  --millis "$((delay - fading))" --setpattline 3 >/dev/null
-        blink1-tool --play 1,0,3,0 >/dev/null
+        blink1_tool --rgb "$rgb" --millis "$fading"             --setpattline 0
+        blink1_tool --rgb "$rgb" --millis "$((delay - fading))" --setpattline 1
+        blink1_tool --rgb 0,0,0  --millis "$fading"             --setpattline 2
+        blink1_tool --rgb 0,0,0  --millis "$((delay - fading))" --setpattline 3
+        blink1_tool --play 1,0,3,0
     ;;
     on)
-        blink1-tool --rgb "$rgb" >/dev/null
+        blink1_tool --rgb "$rgb"
     ;;
     *)
-        blink1-tool --off >/dev/null
+        blink1_tool --off
     ;;
 esac
