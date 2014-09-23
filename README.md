@@ -1,4 +1,4 @@
-blink1-rain
-===========
+blink1-weather
+==============
 
-SImple rain alarm shell script for blink(1)
+SImple weather alarm shell script for blink(1)
