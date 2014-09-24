@@ -11,7 +11,7 @@ blink1_tool_args=
 prog=$(basename "$0")
 # http://openweathermap.org/forecast
 url="http://api.openweathermap.org/data/2.5/forecast/daily?q=${region}&mode=json&units=${units}&cnt=1"
-last_id_file=/tmp/blink1-rain.last-id
+last_id_file=/tmp/blink1-weather.last-id
 
 blink1_tool() {
     blink1-tool $blink1_tool_args "$@" >/dev/null
