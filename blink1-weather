@@ -14,7 +14,7 @@ url="http://api.openweathermap.org/data/2.5/forecast/daily?q=${region}&mode=json
 state_file=/tmp/blink1-weather.state
 
 blink1_tool() {
-    blink1-tool $blink1_tool_args "$@" >/dev/null
+    blink1-tool $blink1_tool_args "$@"
     rc=$?
 
     if [ "$rc" != 0 ]; then
@@ -26,13 +26,13 @@ blink1_tool() {
 
 if [ "$(date +%H%M)" -lt "$(echo "$wake_up_time" | tr -d :)" ]; then
     rm -f "$state_file"
-    blink1_tool --off
+    blink1_tool --off >/dev/null
     exit 0
 fi
 
 if [ "$(date +%H%M)" -ge "$(echo "$sleep_time" | tr -d :)" ]; then
     rm -f "$state_file"
-    blink1_tool --off
+    blink1_tool --off >/dev/null
     exit 0
 fi
 
@@ -89,7 +89,7 @@ case $weather_id in
     *)
         echo "$prog: unknown weather id: $weather_id" >&2
         rm -f "$state_file"
-        blink1_tool --off
+        blink1_tool --off >/dev/null
         exit 1
     ;;
 esac
@@ -106,21 +106,22 @@ fi
 case $mode in
   blink)
         if [ "$prev_state" = "$state" ]; then
-            blink1-tool $blink1_tool_args --playstate \
-                | grep -qF playing:1 && exit 0
+            blink1_tool --playstate | grep -qF playing:1 && exit 0
         fi
 
-        blink1_tool --off
-        blink1_tool --rgb "$rgb" --millis "$fading"             --setpattline 0
-        blink1_tool --rgb "$rgb" --millis "$((delay - fading))" --setpattline 1
-        blink1_tool --rgb 0,0,0  --millis "$fading"             --setpattline 2
-        blink1_tool --rgb 0,0,0  --millis "$((delay - fading))" --setpattline 3
-        blink1_tool --play 1,0,3,0
+        blink1_tool --off >/dev/null
+        blink1_tool --rgb "$rgb" --millis "$fading" --setpattline 0 >/dev/null
+        blink1_tool --rgb "$rgb" --millis "$((delay - fading))" \
+            --setpattline 1 >/dev/null
+        blink1_tool --rgb 0,0,0  --millis "$fading" --setpattline 2 >/dev/null
+        blink1_tool --rgb 0,0,0  --millis "$((delay - fading))" \
+            --setpattline 3 >/dev/null
+        blink1_tool --play 1,0,3,0 >/dev/null
     ;;
     on)
-        blink1_tool --rgb "$rgb"
+        blink1_tool --rgb "$rgb" >/dev/null
     ;;
     *)
-        blink1_tool --off
+        blink1_tool --off >/dev/null
     ;;
 esac
