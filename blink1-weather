@@ -40,8 +40,6 @@ weather_id=$(wget -q -O - "$url" | jq '.list[0].weather[0].id')
 
 if [ -z "$weather_id" ]; then
     echo "$prog: cannot get weather id" >&2
-    rm -f "$state_file"
-    blink1_tool --off
     exit 1
 fi
 
@@ -108,9 +106,11 @@ fi
 case $mode in
   blink)
         if [ "$prev_state" = "$state" ]; then
-            blink1_tool --playstate | grep -qF playing:1 && exit 0
+            blink1-tool $blink1_tool_args --playstate \
+                | grep -qF playing:1 && exit 0
         fi
 
+        blink1_tool --off
         blink1_tool --rgb "$rgb" --millis "$fading"             --setpattline 0
         blink1_tool --rgb "$rgb" --millis "$((delay - fading))" --setpattline 1
         blink1_tool --rgb 0,0,0  --millis "$fading"             --setpattline 2
