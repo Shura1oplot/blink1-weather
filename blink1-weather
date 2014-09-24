@@ -15,22 +15,33 @@ last_id_file=/tmp/blink1-rain.last-id
 
 blink1_tool() {
     blink1-tool $blink1_tool_args "$@" >/dev/null
+
+    if [ "$?" != 0 ]; then
+        echo "$prog: blink1-tool dies with code $rc" >&2
+        rm -f "$last_id_file"
+        exit 1
+    fi
 }
 
-die() {
-    blink1_tool --off
+if [ "$(date +%H%M)" -lt "$(echo "$wake_up_time" | tr -d :)" ]; then
     rm -f "$last_id_file"
-    exit "$1"
-}
+    blink1_tool --off
+    exit 0
+fi
 
-test "$(date +%H%M)" -lt "$(echo "$wake_up_time" | tr -d :)" && die 0
-test "$(date +%H%M)" -ge "$(echo "$sleep_time" | tr -d :)" && die 0
+if [ "$(date +%H%M)" -ge "$(echo "$sleep_time" | tr -d :)" ]; then
+    rm -f "$last_id_file"
+    blink1_tool --off
+    exit 0
+fi
 
 id=$(wget -q -O - "$url" | jq '.list[0].weather[0].id')
 
 if [ -z "$id" ]; then
     echo "$prog: cannot get weather id" >&2
-    die 1
+    rm -f "$last_id_file"
+    blink1_tool --off
+    exit 1
 fi
 
 mode=off
@@ -72,19 +83,27 @@ case $id in
     ;;
     *)
         echo "$prog: unknown weather id: $id" >&2
-        die 1
+        rm -f "$last_id_file"
+        blink1_tool --off
+        exit 1
     ;;
 esac
 
 if [ -r "$last_id_file" ]; then
-    test "$(cat "$last_id_file")" = "$id" && exit 0
+    prev_id=$(cat "$last_id_file")
 fi
 
-echo "$id" >"$last_id_file"
-chmod 0666 "$last_id_file"
+if [ "$prev_id" != "$id" ]; then
+    echo "$id" >"$last_id_file"
+    chmod 0666 "$last_id_file"
+fi
 
 case $mode in
   blink)
+        if [ "$prev_id" = "$id" ]; then
+            blink1_tool --playstate | grep -qF playing:1 && exit 0
+        fi
+
         blink1_tool --rgb "$rgb" --millis "$fading"             --setpattline 0
         blink1_tool --rgb "$rgb" --millis "$((delay - fading))" --setpattline 1
         blink1_tool --rgb 0,0,0  --millis "$fading"             --setpattline 2
