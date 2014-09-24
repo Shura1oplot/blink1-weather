@@ -11,55 +11,60 @@ blink1_tool_args=
 prog=$(basename "$0")
 # http://openweathermap.org/forecast
 url="http://api.openweathermap.org/data/2.5/forecast/daily?q=${region}&mode=json&units=${units}&cnt=1"
-last_id_file=/tmp/blink1-weather.last-id
+state_file=/tmp/blink1-weather.state
 
 blink1_tool() {
     blink1-tool $blink1_tool_args "$@" >/dev/null
+    rc=$?
 
-    if [ "$?" != 0 ]; then
+    if [ "$rc" != 0 ]; then
         echo "$prog: blink1-tool dies with code $rc" >&2
-        rm -f "$last_id_file"
+        rm -f "$state_file"
         exit 1
     fi
 }
 
 if [ "$(date +%H%M)" -lt "$(echo "$wake_up_time" | tr -d :)" ]; then
-    rm -f "$last_id_file"
+    rm -f "$state_file"
     blink1_tool --off
     exit 0
 fi
 
 if [ "$(date +%H%M)" -ge "$(echo "$sleep_time" | tr -d :)" ]; then
-    rm -f "$last_id_file"
+    rm -f "$state_file"
     blink1_tool --off
     exit 0
 fi
 
-id=$(wget -q -O - "$url" | jq '.list[0].weather[0].id')
+weather_id=$(wget -q -O - "$url" | jq '.list[0].weather[0].id')
 
-if [ -z "$id" ]; then
+if [ -z "$weather_id" ]; then
     echo "$prog: cannot get weather id" >&2
-    rm -f "$last_id_file"
+    rm -f "$state_file"
     blink1_tool --off
     exit 1
 fi
 
+state=0
 mode=off
 rgb=0,0,0
 fading=300
 delay=500
 
 # http://openweathermap.org/weather-conditions
-case $id in
+case $weather_id in
     2??)  # thunderstorm
+        state=2
         mode=blink
         rgb=192,0,192
     ;;
     3??)  # drizzle
+        state=3
         mode=on
         rgb=0,0,128
     ;;
     5??)  # rain
+        state=5
         mode=blink
         rgb=0,0,192
         fading=500
@@ -72,35 +77,37 @@ case $id in
     8??)  # clouds
     ;;
     90?)  # extreme
+        state=9.1
         mode=blink
         rgb=255,0,0
     ;;
     950|951|952|953|954|955|956)  # additional, setting - strong breeze
     ;;
     957|958|959|960|961|962)  # additional, high wind - hurricane
+        state=9.2
         mode=blink
         rgb=255,0,0
     ;;
     *)
-        echo "$prog: unknown weather id: $id" >&2
-        rm -f "$last_id_file"
+        echo "$prog: unknown weather id: $weather_id" >&2
+        rm -f "$state_file"
         blink1_tool --off
         exit 1
     ;;
 esac
 
-if [ -r "$last_id_file" ]; then
-    prev_id=$(cat "$last_id_file")
+if [ -r "$state_file" ]; then
+    prev_state=$(cat "$state_file")
 fi
 
-if [ "$prev_id" != "$id" ]; then
-    echo "$id" >"$last_id_file"
-    chmod 0666 "$last_id_file"
+if [ "$prev_state" != "$state" ]; then
+    echo "$state" >"$state_file"
+    chmod 0666 "$state_file"
 fi
 
 case $mode in
   blink)
-        if [ "$prev_id" = "$id" ]; then
+        if [ "$prev_state" = "$state" ]; then
             blink1_tool --playstate | grep -qF playing:1 && exit 0
         fi
 
