@@ -1,12 +1,12 @@
 #!/bin/sh
 
-# config
+# BEGIN CONFIG
 region=Moscow,ru
 units=metric  # internal, metric, imperial
 sleep_time=22:00
 wake_up_time=06:00
 blink1_tool_args=
-# end config
+# END CONFIG
 
 prog=$(basename "$0")
 # http://openweathermap.org/forecast
