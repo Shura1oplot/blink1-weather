@@ -1,12 +1,23 @@
 #!/bin/sh
 
-# BEGIN CONFIG
+# BEGIN DEFAULT CONFIG
 region=Moscow,ru
 units=metric  # internal, metric, imperial
 sleep_time=22:00
 wake_up_time=06:40
+alarm_max_temp=24
+alarm_min_temp=-10
 device_serial=
-# END CONFIG
+# END DEFAULT CONFIG
+
+
+if [ -e "/etc/blink1-weather.conf" ]; then
+    . "/etc/blink1-weather.conf"
+fi
+
+if [ -e "$HOME/.config/blink1-weather.conf" ]; then
+    . "$HOME/.config/blink1-weather.conf"
+fi
 
 
 prog=$(basename "$0")
@@ -57,7 +68,8 @@ if [ "$(date +%H%M)" -ge "$(echo "$sleep_time" | tr -d :)" ]; then
 fi
 
 
-weather_id=$(wget -q -O - "$url" | jq '.list[0].weather[0].id')
+weather_data=$(wget -q -O - "$url")
+weather_id=$(echo "$weather_data" | jq '.list[0].weather[0].id')
 
 if [ -z "$weather_id" ]; then
     echo "$prog: cannot get weather id" >&2
@@ -117,6 +129,26 @@ case $weather_id in
 esac
 
 
+if [ "$state" = 0 ]; then
+    temp_max=$(echo "$weather_data" | jq '.list[0].temp.max')
+    temp_min=$(echo "$weather_data" | jq '.list[0].temp.min')
+
+    if awk -va="$temp_max" -vb="$alarm_max_temp" 'BEGIN {exit (a>=b)?0:1}'; then
+        state=a.1
+        mode=blink
+        rgb=128,128,0
+        fading=500
+        delay=2000
+    elif awk -va="$temp_min" -vb="$alarm_min_temp" 'BEGIN {exit (a<=b)?0:1}'; then
+        state=a.1
+        mode=blink
+        rgb=128,128,0
+        fading=500
+        delay=2000
+    fi
+fi
+
+
 if [ ! -e "$state_file" ]; then
     echo 0 >"$state_file"
     chmod 0666 "$state_file"
@@ -131,7 +163,7 @@ fi
 
 case $mode in
   blink)
-        if [ "$prev_state" = "$state" ]; then
+        if [ "$prev_state" = "$state" -a "$1" != "-f" ]; then
             blink1_tool --playstate | grep -qF playing:1 && exit 0
         fi
 
