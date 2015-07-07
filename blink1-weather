@@ -59,13 +59,13 @@ blink1_tool() {
 }
 
 
-if [ "$(date +%H%M)" -lt "$(echo "$wake_up_time" | tr -d :)" ]; then
+if [ "$(date +%H%M%S)" -lt "$(echo "$wake_up_time" | tr -d :)00" ]; then
     rm -f "$state_file"
     blink1_tool --off
     exit 0
 fi
 
-if [ "$(date +%H%M)" -ge "$(echo "$sleep_time" | tr -d :)" ]; then
+if [ "$(date +%H%M%S)" -ge "$(echo "$sleep_time" | tr -d :)00" ]; then
     rm -f "$state_file"
     blink1_tool --off
     exit 0
