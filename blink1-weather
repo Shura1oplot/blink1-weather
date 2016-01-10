@@ -45,6 +45,7 @@ blink1_tool_output() {
         args="$args --id $device_id"
     fi
 
+echo blink1-tool $args "$@"
     blink1-tool $args "$@"
     rc=$?
 
@@ -56,7 +57,7 @@ blink1_tool_output() {
 }
 
 blink1_tool() {
-    blink1_tool "$@" >/dev/null
+    blink1_tool_output "$@" #>/dev/null
 }
 
 
@@ -145,9 +146,9 @@ if [ "$state" = 0 ]; then
         fading=500
         delay=2000
     elif awk -va="$temp_min" -vb="$alarm_min_temp" 'BEGIN {exit (a<=b)?0:1}'; then
-        state=a.1
+        state=a.2
         mode=blink
-        rgb=128,110,0
+        rgb=0,0,128
         fading=500
         delay=2000
     fi
@@ -172,7 +173,7 @@ case $mode in
             blink1_tool_output --playstate | grep -qF playing:1 && exit 0
         fi
 
-        blink1_tool --off >/dev/null
+        blink1_tool --off
         blink1_tool --rgb "$rgb" --millis "$fading"             --setpattline 0
         blink1_tool --rgb "$rgb" --millis "$((delay - fading))" --setpattline 1
         blink1_tool --rgb 0,0,0  --millis "$fading"             --setpattline 2
