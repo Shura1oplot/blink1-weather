@@ -147,7 +147,7 @@ if [ "$state" = 0 ]; then
     elif awk -va="$temp_min" -vb="$alarm_min_temp" 'BEGIN {exit (a<=b)?0:1}'; then
         state=a.1
         mode=blink
-        rgb=128,128,0
+        rgb=128,110,0
         fading=500
         delay=2000
     fi
