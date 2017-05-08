@@ -109,6 +109,15 @@ case $weather_id in
         delay=2000
     ;;
     6??)  # snow
+        month=$(date +%m)
+        if [ "$month" -gt 3 -a "$month" -lt 10 ]; then
+            # snow in April..September
+            state=5
+            mode=blink
+            rgb=0,0,192
+            fading=500
+            delay=2000
+        fi 
     ;;
     7??)  # atmosphere
     ;;
